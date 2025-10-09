@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/go-vgo/robotgo"
 )
 
@@ -22,9 +22,19 @@ func main() {
 			os.Exit(0)
 		}
 	}
-	// Handle exiting more gracefully.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+
+	// Setup for better Ctrl+C messaging, specifically. This is a channel to receive OS signals.
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	redText := color.New(color.FgRed).SprintFunc()
+
+	go func() {
+
+		<-signalChan
+
+		fmt.Println(redText("\nExiting from user input."))
+		os.Exit(0)
+	}()
 
 	for {
 		// Linux gets angrryyyy when you try to use F13.
@@ -39,8 +49,6 @@ func main() {
 
 		// Wait for 3 minutes. This has drifting, but idfk how to fix it, okay?
 		time.Sleep(3 * time.Minute)
-
-		ctx.Done()
-
 	}
+
 }
