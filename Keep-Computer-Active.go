@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/go-vgo/robotgo"
@@ -19,6 +22,9 @@ func main() {
 			os.Exit(0)
 		}
 	}
+	// Handle exiting more gracefully.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	for {
 		// Linux gets angrryyyy when you try to use F13.
@@ -29,13 +35,12 @@ func main() {
 			robotgo.KeyTap("f13")
 		}
 
-		now := time.Now()
-		next3Minutes := now.Truncate(3 * time.Minute).Add(3 * time.Minute)
-
-		// After using other languages'
 		fmt.Println("Continuing to keep computer active. See you in 3 minutes! Current time is", time.Now().Local().Format("03:04:05 PM."))
 
-		// Wait for 3 minutes.
-		time.Sleep(time.Until(next3Minutes))
+		// Wait for 3 minutes. This has drifting, but idfk how to fix it, okay?
+		time.Sleep(3 * time.Minute)
+
+		ctx.Done()
+
 	}
 }
