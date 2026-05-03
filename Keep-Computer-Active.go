@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -18,7 +20,7 @@ func main() {
 	args := os.Args[1:]
 	for _, arg := range args {
 		if arg == "-version" || arg == "--version" || arg == "-v" {
-			fmt.Println("Version number: 1.4")
+			fmt.Println("Version number: 1.5")
 			os.Exit(0)
 		}
 	}
@@ -36,15 +38,27 @@ func main() {
 		os.Exit(0)
 	}()
 
+	// On macOS, synthesized F13 events don't reset HIDIdleTime, so spawn caffeinate
+	// to create an IOPMAssertion. -w makes it exit when this process exits.
+	if runtime.GOOS == "darwin" {
+		cmd := exec.Command("caffeinate", "-d", "-i", "-w", strconv.Itoa(os.Getpid()))
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, redText("Warning: failed to start caffeinate: "+err.Error()))
+		}
+	}
+
 	ticker := time.NewTicker(3 * time.Minute)
 	defer ticker.Stop()
 
 	for {
-		// Linux gets angrryyyy when you try to use F13.
-		if runtime.GOOS == "linux" {
+		switch runtime.GOOS {
+		case "linux":
+			// Linux gets angrryyyy when you try to use F13.
 			robotgo.KeyTap("scrolllock")
 			robotgo.KeyTap("scrolllock")
-		} else {
+		case "darwin":
+			// caffeinate is doing the work; no per-tick keypress needed.
+		default:
 			robotgo.KeyTap("f13")
 		}
 
